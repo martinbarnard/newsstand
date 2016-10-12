@@ -45,6 +45,7 @@ Available sources:
 - techradar
 - the-economist
 - the-next-web
+- the-new-york-times
 - the-telegraph
 - the-times-of-india
 - the-verge
