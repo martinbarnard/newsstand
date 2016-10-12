@@ -8,48 +8,48 @@ info:
   x-21-category: utilities
   x-21-quick-buy: |
     # Use one of the following news sources to construct your query:
-    # - ars-technica
-    # - associated-press
-    # - bbc-news
-    # - bbc-sport
-    # - bloomberg
-    # - business-insider
-    # - cnbc
-    # - cnn
-    # - daily-mail
-    # - engadget
-    # - entertainment-weekly
-    # - espn
-    # - financial-times
-    # - fortune
-    # - fox-sports
-    # - google-news
-    # - hacker-news
-    # - mashable
-    # - mirror
-    # - mtv-news
-    # - national-geographic
-    # - new-scientist
-    # - newsweek
-    # - new-york-magazine
-    # - nfl-news
-    # - polygon
-    # - recode
-    # - reuters
-    # - sky-news
-    # - sky-news-sports
-    # - spiegel-online
-    # - techcrunch
-    # - techradar
-    # - the-economist
-    # - the-next-web
-    # - the-telegraph
-    # - the-times-of-india
-    # - the-verge
-    # - the-wall-street-journal
-    # - the-washington-post
-    # - time
-    # - usa-today
+    # ars-technica
+    # associated-press
+    # bbc-news
+    # bbc-sport
+    # bloomberg
+    # business-insider
+    # cnbc
+    # cnn
+    # daily-mail
+    # engadget
+    # entertainment-weekly
+    # espn
+    # financial-times
+    # fortune
+    # fox-sports
+    # google-news
+    # hacker-news
+    # mashable
+    # mirror
+    # mtv-news
+    # national-geographic
+    # new-scientist
+    # newsweek
+    # new-york-magazine
+    # nfl-news
+    # polygon
+    # recode
+    # reuters
+    # sky-news
+    # sky-news-sports
+    # spiegel-online
+    # techcrunch
+    # techradar
+    # the-economist
+    # the-next-web
+    # the-telegraph
+    # the-times-of-india
+    # the-verge
+    # the-wall-street-journal
+    # the-washington-post
+    # time
+    # usa-today
     # Then structure your command like so:
     $ 21 buy http://[fcce:a977:ee41:e895:bee4:0000:0000:0001]:10125/news?source=techcrunch
   x-21-total-price: {max: 900, min: 900}
