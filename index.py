@@ -11,7 +11,10 @@
 # Load libraries
 import requests
 import urllib, os, json, yaml
-from flask import Flask, request
+from flask import Flask, request, jsonify
+import dateutil.parser
+import datetime
+
 # 21co wallet 
 print('importing two1 stuff')
 from two1.wallet import Wallet
@@ -25,10 +28,11 @@ from hashlib import sha256
 ids=lambda st : sha256(st.encode('utf-8'))
 
 
+import threading, time
 # TODO: threading to periodically pull all sources...
 # TODO: use 10' timer to pull all sources and then provide an aggregate here...
-#tsecs=10*60
-
+tsecs=60*60
+threads=[]
 
 def init_db():
     client = MongoClient()
@@ -36,7 +40,6 @@ def init_db():
     return db.articles
 
 db = init_db()
-print("db initialised")
 
 key='f26c6e07aac5401eb95f71a9c4f70db1'
 app = Flask(__name__)
@@ -62,7 +65,69 @@ newsapi='https://newsapi.org/v1/'
 # our list of sources
 sourceList=[]
 
+
+################################################################################
+# Routed functions
+################################################################################
+@app.route('/sources')
+def sources():
+    '''
+    Display a list of sources
+    '''
+    rval=[]
+    for s in sourceList:
+        rval.append(s['id'])
+    return json.dumps(rval)
+
+@app.route('/news')
+#@payment.required(900)
+def get_articles():
+    '''
+    pulls from our database which is set to 
+    update every n-minutes
+    '''
+    source=request.args.get('source','all')
+    categories=request.args.get('articles', 'all')
+
+    # fields here...
+    tora=datetime.datetime.now()
+    hrs=datetime.timedelta(hours=6)
+    after=tora - hrs
+    rv=[]
+    rows=db.find({'date':{'$gt':after}})
+    if rows:
+        for row in rows:
+            k={}
+            # todo omit key of date
+            for r in row.keys():
+                if r!='date':
+                    k[r]=row[r]
+                else:
+                    k[r]=row[r].strftime('%Y-%m-%d %H:%M:%S')
+            rv.append(k)
+    return json.dumps(rv)
+
+
+
+
+################################################################################
+# private functions
+################################################################################
+def get_url(urlstring, ttls=None):
+    '''
+    function to get the data from the url
+    expects urlstring to be complete.
+    '''
+    url = requests.get(urlstring)
+    titles=[]
+    bl=json.loads(url.text)
+    xx=add_records(db,bl)
+    return bl['articles']
+
 def get_sources():
+    '''
+    Pull sources from our api
+    '''
     sl=[]
     url=requests.get(newsapi + 'sources')
     p=json.loads(url.text)
@@ -70,71 +135,71 @@ def get_sources():
         sl.append(s)
     return sl
 
-@app.route('/sources')
-def sources():
-    rval=[]
-    for s in sourceList:
-        rval.append(s['id'])
-    print('yeah')
-    return json.dumps(rval)
-
-@app.route('/news')
-#@payment.required(900)
-def get_articles():
-    source=request.args.get('source') 
-    ttls=request.args.get('titles')
-    if source == None:
-        source=choice(sourceList)
-        srcstring = 'source={}'.format(source['id'])
-        srtstring = '&sortBy={}'.format(source['sortBysAvailable'][0])
-    else:
-        print('using {}'.format(source))
-        srt='latest'
-        for k in sourceList:
-            if k['id'] == source:
-                srt=k['sortBysAvailable'][0]
-        srtstring='&sortBy={}'.format(srt)
-        # TODO: check source exists and also sort is valid
-        srcstring='source={}'.format(source)
-
-
-    urlstring=newsapi + 'articles?' + srcstring + srtstring + '&apiKey=' + key #+ country + language
-    print("calling: {}".format(urlstring))
-    url = requests.get(urlstring)
-    titles=[]
-    articles=[]
-    bl=json.loads(url.text)
-    xx=add_records(db,bl)
-    if ttls != None and ttls.upper()=='Y':
-        for l in bl['articles']:
-            titles.append(l['title'])
-        return json.dumps(titles)
-    return json.dumps(bl['articles'])
-
+def articles(src,categories=categories,key=key, db=db, tsecs=tsecs):
+    '''
+    update db with latest articles from src with cat
+    will be threaded
+    expects:
+    src - string of source id
+    returns - nothing
+    '''
+    while True:
+        srcstring = 'source={}'.format(src['id'])
+        for cat in categories:
+            urlcat="&category={}".format(cat)
+            urlstring=newsapi + 'articles?' + srcstring + urlcat + '&apiKey=' + key 
+            rvs=get_url(urlstring)
+            add_records(db, rvs)
+        time.sleep(tsecs)
 
 
 def add_records(coll,recs):
+    '''
+    add records to coll 
+    '''
+    tora=datetime.datetime.now()
     rvs=[]
+    # recs is a list
     if 'articles'  in recs:
         for r in recs['articles']:
             x=ids(r['url'])
             xd =x.hexdigest()
             r['_id']=xd
-            if not coll.find_one({'_id':xd}):
-                print("adding... {}".format(r['title']))
-                coll.insert_one(r)
+            datestring=r['publishedAt']
+            if datestring:
+                try:
+                    yourdate = dateutil.parser.parse(datestring)
+                    r['date']=yourdate
+                except AttributeError:
+                    r['date']=tora
+                    print("can't format date {}".format(datestring))
+                except OverflowError:
+                    print("fuck overflows")
             else:
-                print('{} already there'.format(xd))
+                r['date']=tora
+            if not coll.find_one({'_id':xd}):
+                try:
+                    print(">>> INSERTING {}".format(r['title']))
+                    coll.insert_one(r)
+                except OverflowError:
+                    # we get here with the times of india having fucked up dates
+                    print("we're in overflowzzz {}".format(r))
+                    r['date']=datetime.datetime.now()
+                    try:
+                        coll.insert_one(r)
+                    except:
+                        print("Fuck it's all died")
     return 0
-#    ids= coll.insert_many(recs)
-#    return ids
 
 
 # Init Host
 if __name__=='__main__':
-    print("initalising...")
     port=args.port
     sourceList=get_sources()
-    print('sources acquired:')
+    for s in sourceList:
+        t = threading.Thread(target=articles, args=(s,))
+        t.start()
+        threads.append(t)
 
+    print("initalising...")
     app.run(host='::', port=port)
