@@ -48,7 +48,7 @@ print("skipping wallet for debug porpoises")
 #print("Initiating wallet stuff")
 #wallet = Wallet()
 #payment = Payment(app, wallet)
-print("Wallet initiated")
+#print("Wallet initiated")
 
 # our list of sources
 sourceList=[]
