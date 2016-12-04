@@ -1,0 +1,29 @@
+h1 {
+}
+p {
+}
+dl {
+    display: block;
+}
+.entry {
+    display: inline-block;
+    width: 350px;
+    -webkit-box-shadow: -1px 6px 24px -2px rgba(0,0,0,0.75);
+    -moz-box-shadow: -1px 6px 24px -2px rgba(0,0,0,0.75);
+    box-shadow: -1px 6px 24px -2px rgba(0,0,0,0.75);
+    padding:14px;
+    margin:14px;
+}
+.linky {
+    padding: 5px;
+}
+.entry-after {
+
+}
+.entry:hover {
+    -webkit-box-shadow: -1px 6px 24px -2px rgba(74,15,74,1);
+    -moz-box-shadow: -1px 6px 24px -2px rgba(74,15,74,1);
+    box-shadow: -1px 6px 24px -2px rgba(74,15,74,1);
+}
+.urlImg {
+}

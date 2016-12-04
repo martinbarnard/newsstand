@@ -13,7 +13,7 @@ from config import *
 # Load libraries
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash 
 from pymongo import MongoClient 
-import datetime, time, os
+import datetime, time, os, json
 import dateutil.parser
 from random import choice
 
@@ -40,7 +40,7 @@ def init_db():
 
 db = init_db()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 
 # 21.co wallet & payment
 # Init Flask, Wallet and Payment
@@ -57,6 +57,15 @@ sourceList=[]
 ################################################################################
 # Routed functions
 ################################################################################
+
+@app.route('/')
+def index():
+    nw=datetime.datetime.now()
+    hrs=datetime.timedelta(hours=9)
+    after=nw - hrs
+    #rows=db.find({'date':{'$gt':after}})
+    return render_template('index.html', rows=None)
+
 @app.route('/sources')
 def sources():
     '''
@@ -66,17 +75,7 @@ def sources():
     for s in sourceList:
         rval.append(s['id'])
     return json.dumps(rval)
-
-@app.route('/')
-@app.route('/index.html')
-def main():
-    nw=datetime.datetime.now()
-    hrs=datetime.timedelta(hours=1)
-    after=nw - hrs
-    #rows=db.find({'date':{'$gt':after}})
-    return render_template('index.html')
-
-@app.route('/news')
+@app.route('/news', methods=['GET', 'POST'])
 #@payment.required(900)
 def get_articles():
     '''
@@ -93,7 +92,7 @@ def get_articles():
     categories  = request.args.get('categories', 'all')
     before      = request.args.get('before', '')
     after       = request.args.get('after', '')
-    author      = request.args.get('author', '')
+    author      = request.args.get('author', 'all')
 
     # fields here...
     nw=datetime.datetime.now()
@@ -110,9 +109,12 @@ def get_articles():
                 if r!='date':
                     k[r]=row[r]
                 else:
-                    k[r]=row[r].strftime('%Y-%m-%d %H:%M:%S')
+                    k[r]=row[r].strftime('%Y-%m-%d %H:%M')
             rv.append(k)
-    return json.dumps(rv[1:])
+    if request.method=='GET':
+        return json.dumps(rv[1:])
+    else:
+        return render_template('index.html', rows=rv)
 
 
 
@@ -129,4 +131,4 @@ if __name__=='__main__':
     # file if none exists
 
     print("initalising...")
-    app.run(host='::', port=port)
+    app.run(host='::', port=port, debug=True)

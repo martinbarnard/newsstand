@@ -1,20 +1,59 @@
 {% extends "layout.html" %}
+{% block  title %}Index{% endblock %}
+{% block head %}
+    {{ super() }}
+    <style type="text/css"> </style>
+    {% endblock %}
 {% block body %}
+    <!-- TODO: pull input lists for source, category & author -->
+    <!-- TODO: payment method in browser -->
 
-    <form action="{{ get_articles() }}" method=post class=get-articles>
-      <dl>
-        <dt>Source:
-        <dd><input type=text size=30 name=source>
-        <dt>Author:
-        <dd><input type=text size=30 name=author>
-        <!-- TODO: List of categories -->
-        <dt>Category:
-        <dd><input type=text size=30 name=category>
-        <dd><input type=submit value=grab>
-      </dl>
-    </form>
-  <ul class=entries>
-    <!-- this  should only be called on payment -->
-    {% print('hi there') %}
-  </ul>
+    <div class="inputform">
+        <form action="news" method=post class=get-articles>
+          <dl>
+            <dt>Source: <dd><input type=text size=30 name=source>
+            <dt>Author: <dd><input type=text size=30 name=author>
+            <!-- TODO: List of categories -->
+            <dt>Category: <dd><input type=text size=30 name=category>
+            <dd><input type=submit value=grab>
+          </dl>
+        </form>
+    </div>
+    {% if rows != None %}
+        <div  class="entries">
+          {% for row in rows[1:] %}
+              <div class="entry">
+                  <div class="toprow">
+                      {% if row['urlToImage'] != None %}
+                          <img  src="{{ row['urlToImage'] }}" class="urlImg" height="55px" />
+                      {% else %}
+                          <img  src="" class="urlImg" height="55px" />
+                      {% endif %}
+                      <span style="float:right;">
+                          {% if row['publishedAt'] != None %}
+                              <div>{{ row['publishedAt'] }}</div>
+                          {% endif %}
+                          <div>
+                              {% if row['author'] != None and row['author'] != '' %}
+                                  by {{ row['author'] }}
+                              {% endif %}
+                              {% if row['category'] != None %}
+                                in {{ row['category'].title() }}
+                              {% endif %}
+                          </div>
+                      </span>
+                  </div>
+                  <h3 class="source">{{ row['src'].replace('-', ' ').title() }}</h3> 
+                  <a href="{{ row['url'] }}"> {{ row['title'][:45] }}...</a> 
+
+              </div>
+          {% endfor %}
+        </div>
+          <div class="after-entry"></div>
+
+
+        {% for row in rows[1:] %}
+            <div>{{row}}</div>
+        {% endfor %}
+    {% endif %}
 {% endblock %}
