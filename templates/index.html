@@ -24,6 +24,11 @@
             box-shadow:2px 2px 3px blue;
         }
     </style>
+    {% if tokens != None %}
+        {% for t in tokens %}
+            <a href="">{{t}}</a>:{{tokens[t]}}
+        {% endfor %}
+    {% endif %}
     <a class='latest' href="news?latest=1">Latest</a>
     <div class="inputform">
         <form action="news" method=post class="get-articles">
@@ -93,8 +98,5 @@
           <div class="after-entry"></div>
 
 
-        {% for row in rows[1:] %}
-            <div>{{row}}</div>
-        {% endfor %}
     {% endif %}
 {% endblock %}

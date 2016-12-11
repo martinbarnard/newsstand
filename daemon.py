@@ -5,14 +5,18 @@ from pymongo import MongoClient
 import threading, time
 import urllib, os, json, yaml
 import logging, sys
-logging.basicConfig(strem=sys.stderr, level=logging.DEBUG)
-
 from config import *
-threads=[]
-DEBUG=True
-#
-# for generating unique ids
 from hashlib import sha1
+# NLTK >> Maybe we should use separate module for this?
+import nltk
+from nltk.corpus import stopwords
+stopset = set(stopwords.words('english'))
+
+
+logging.basicConfig(strem=sys.stderr, level=logging.DEBUG)
+threads=[]
+# TODO: loglevel, etc.
+DEBUG=True
 def ids(inst):
     '''
     Generate unique hash for url. Should be fairly fast and unique with sha1
@@ -27,15 +31,32 @@ def init_db():
     cl = client.newsstand
     logging.info("daemon running. db init")
     return cl.articles
+
 def init_srcs():
     client=MongoClient()
     cl=client.newsstand
     logging.info('pulling source list')
     return cl.sources
 
+
+#
 # Start our daemon
+#
 db = init_db()
 srcs=init_srcs()
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))   # refers to application_top
+APP_PRIVATE = os.path.join(APP_ROOT,'private')
+def load_sentiment(sentimentData = 'AF.txt'):
+    ''' (file) -> dictionary
+    This method should take your sentiment file
+    and create a dictionary in the form {word: value}
+    '''
+    afinnfile = open(os.path.join(APP_PRIVATE, sentimentData),'r')
+    scores = {} # initialize an empty dictionary
+    for line in afinnfile:
+        term, score  = line.split("\t")  # The file is tab-delimited. "\t" means "tab character"
+        scores[term] = float(score)  # Convert the score to an integer.
+    return scores # Print every (term, score) pair in the dictionary
 
 def get_sources(srcs=srcs):
     '''
@@ -100,6 +121,12 @@ def add_records(db,rvs, src):
             r['_id']=x
             r['src']=src_id
             r['category']=src['category']
+            if len(r['description']) > 20:
+                r['tokens']  = nltk.word_tokenize(r['description'])
+                r['tokens'] = [word for word in r['tokens'] if word not in stopset]
+                logging.debug("tokenized {}".format(r['tokens']))
+            else:
+                r['tokens'] = []
             datestring=r['publishedAt']
             if datestring:
                 try:
@@ -130,9 +157,11 @@ def add_records(db,rvs, src):
         logging.info("No articles in {}".format(rvs))
     return 0
 
-
 sourceList=get_sources()
-
+#
+# Global scores dict
+#
+scores=load_sentiment()
 for s in sourceList:
     t = threading.Thread(target=articles, args=(s, ))
     t.start()

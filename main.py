@@ -36,7 +36,6 @@ print("newstand starting...")
 def init_db():
     client = MongoClient()
     cl = client.newsstand
-    print('yeah baby')
     return cl.articles
 
 def get_sources():
@@ -69,9 +68,6 @@ print("skipping wallet for debug porpoises")
 # our list of sources
 sourceList=get_sources()
 
-# TODO: 
-# nltk keywords extraction
-# api to twitter sentiment analysis
 
 ################################################################################
 # Routed functions
@@ -83,7 +79,7 @@ def index():
     nw=datetime.datetime.now()
     hrs=datetime.timedelta(hours=9)
     after=nw - hrs
-    return render_template('index.html', rows=None, flt=None, categories=categories, sources=sourceList, request=request)
+    return render_template('index.html', rows=None, flt=None, categories=categories, sources=sourceList, request=request, tokens=None)
 
 @app.route('/sources')
 def sources():
@@ -108,6 +104,7 @@ def get_articles():
     after - time: %Y-%m-%d %H:%M:%S
     '''
     global categories, sourceList
+    limits = 50
     if request.method=='GET':
         source      = request.args.get('source','all')
         cats= request.args.get('category', 'all')
@@ -136,9 +133,8 @@ def get_articles():
     if  latest == 1:
         flt={}
 
-
-    print('filter {}'.format(flt))
-    rows=db.find(flt).sort('date', DESCENDING).limit(50)
+    rows=db.find(flt).sort('date', DESCENDING).limit(limits)
+    tokens = {}
     if rows:
         for row in rows:
             k={}
@@ -149,7 +145,13 @@ def get_articles():
                 else:
                     k[r]=row[r].strftime('%Y-%m-%d %H:%M')
             rv.append(k)
-    return render_template('index.html', rows=rv[1:],flt=flt, categories=categories, sources=sourceList, request=request)
+            if 'tokens' in row:
+                for t in row['tokens']:
+                    if t in tokens:
+                        tokens[t] += 1
+                    else:
+                        tokens[t] = 1
+    return render_template('index.html', rows=rv[1:],flt=flt, categories=categories, sources=sourceList, request=request, tokens=tokens)
             #return json.dumps(rv[1:])
 
 
@@ -162,9 +164,4 @@ def get_articles():
 
 # Init Host
 if __name__=='__main__':
-    # TODO: Remove the  threaded daemon and put it in it's own file
-    # TODO: Wrap this in a loop &/or generate a config
-    # file if none exists
-
-    print("initalising...")
     app.run(host='::', port=port, debug=True)
