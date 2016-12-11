@@ -2,30 +2,67 @@
 {% block  title %}Index{% endblock %}
 {% block head %}
     {{ super() }}
-    <style type="text/css"> </style>
     {% endblock %}
 {% block body %}
-    <!-- TODO: pull input lists for source, category & author -->
-    <!-- TODO: payment method in browser -->
-
+    <style type="text/css">
+        .cats {
+            box-shadow:2px 2px 3px darkgrey;
+            padding:4px;
+            margin:4px;
+        }
+        .latest {
+            font-size:1.2em;
+            box-shadow:2px 2px 3px darkgrey;
+            padding:4px;
+            margin:4px;
+            line-height: 2em;
+        }
+        .cats:hover {
+            box-shadow:2px 2px 3px blue;
+        }
+        .latest:hover {
+            box-shadow:2px 2px 3px blue;
+        }
+    </style>
+    <a class='latest' href="news?latest=1">Latest</a>
     <div class="inputform">
-        <form action="news" method=post class=get-articles>
-          <dl>
-            <dt>Source: <dd><input type=text size=30 name=source>
-            <dt>Author: <dd><input type=text size=30 name=author>
-            <!-- TODO: List of categories -->
-            <dt>Category: <dd><input type=text size=30 name=category>
-            <dd><input type=submit value=grab>
-          </dl>
+        <form action="news" method=post class="get-articles">
+            {% if sources != None %}
+                <select name="source" size="10">
+                    <option label=" " disabled selected value>select source</option>
+                    {% for s  in sources %}
+                        {{s}}
+                        <option label="{{s['_id']}}">{{s['_id']}}</option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <div><span>Source:</span><span><input type=text size=30 name=source></span></div>
+            {% endif %}
+            {% if categories != None %}
+                <select name="category" size="5">
+                    <option label=" " disabled selected value>select category</option>
+                {% for row in categories %}
+                    <option >{{row}}</option>
+                {% endfor %}
+                </select>
+            {% else %}
+                <div><span>Category:</span><span><input type=text size=30 name=category></span></div>
+            {% endif %}
+            <div>Author: <span><input type=text size=30 name=author></span></div>
+
+                <div><input type=submit value=grab></div>
         </form>
     </div>
+    {% if flt != None %}
+        {{ flt }}
+    {% endif %}
     {% if rows != None %}
         <div  class="entries">
           {% for row in rows[1:] %}
               <div class="entry">
                   <div class="toprow">
                       {% if row['urlToImage'] != None %}
-                          <img  src="{{ row['urlToImage'] }}" class="urlImg" height="55px" />
+                      <img  src="{{ row['urlToImage'] }}" class="urlImg" height="55px" />
                       {% else %}
                           <img  src="" class="urlImg" height="55px" />
                       {% endif %}
@@ -38,13 +75,17 @@
                                   by {{ row['author'] }}
                               {% endif %}
                               {% if row['category'] != None %}
-                                in {{ row['category'].title() }}
+                                  in <a href="news?category={{row['category']}}">{{ row['category']}}</a>
                               {% endif %}
                           </div>
                       </span>
                   </div>
-                  <h3 class="source">{{ row['src'].replace('-', ' ').title() }}</h3> 
-                  <a href="{{ row['url'] }}"> {{ row['title'][:45] }}...</a> 
+                  <div> <a href='news?source={{row["src"]}}'><h3 class="source">{{ row['src'] }}</h3></a>
+                      <a alt="{{row['title']}}" title="{{row['title']}}" href="{{ row['url'] }}"> {{ row['title'][:45] }}...</a> 
+                  </div>
+                  <div class="hidden">
+                      {{row['description']}}
+                  </div>
 
               </div>
           {% endfor %}

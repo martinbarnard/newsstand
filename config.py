@@ -10,8 +10,8 @@ categories = [
     'gaming', 'general', 'music', 
     'science-and-nature', 'sport', 'technology' 
     ]
-languages=['en', 'de', 'fr'],
-countries= [ 'au', 'de', 'gb', 'in', 'it', 'us' ],
+languages=['en'],
+countries= [ 'gb', 'us' ],
 
 #[security]
 key= 'f26c6e07aac5401eb95f71a9c4f70db1'

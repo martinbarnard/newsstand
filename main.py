@@ -8,11 +8,10 @@
 # GitHub Repository: Newsstand (github.com/cryptopelago/newsstand)
 # License: Unlicense (unlicense.org)
 
-from config import *
 
 # Load libraries
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash 
-from pymongo import MongoClient 
+from pymongo import *
 import datetime, time, os, json
 import dateutil.parser
 from random import choice
@@ -27,7 +26,9 @@ from random import choice
 #from daemon import *
 # 
 
-print("pymongo started")
+from config import *
+
+print("newstand starting...")
 
 
 
@@ -37,6 +38,21 @@ def init_db():
     cl = client.newsstand
     print('yeah baby')
     return cl.articles
+
+def get_sources():
+    '''
+    Will return our sources
+    '''
+    client = MongoClient()
+    cl=client.newsstand
+    cl = cl.sources
+    res=cl.find()
+    rvs=[]
+    for r in res:
+        rvs.append(r)
+    return rvs
+
+
 
 db = init_db()
 
@@ -51,8 +67,11 @@ print("skipping wallet for debug porpoises")
 #print("Wallet initiated")
 
 # our list of sources
-sourceList=[]
+sourceList=get_sources()
 
+# TODO: 
+# nltk keywords extraction
+# api to twitter sentiment analysis
 
 ################################################################################
 # Routed functions
@@ -60,11 +79,11 @@ sourceList=[]
 
 @app.route('/')
 def index():
+    global categories, sourceList
     nw=datetime.datetime.now()
     hrs=datetime.timedelta(hours=9)
     after=nw - hrs
-    #rows=db.find({'date':{'$gt':after}})
-    return render_template('index.html', rows=None)
+    return render_template('index.html', rows=None, flt=None, categories=categories, sources=sourceList, request=request)
 
 @app.route('/sources')
 def sources():
@@ -72,6 +91,7 @@ def sources():
     Display a list of sources
     '''
     rval=[]
+    sourceList = get_sources()
     for s in sourceList:
         rval.append(s['id'])
     return json.dumps(rval)
@@ -87,20 +107,38 @@ def get_articles():
     before - time: %Y-%m-%d %H:%M:%S
     after - time: %Y-%m-%d %H:%M:%S
     '''
-    # TODO:  Utilise these
-    source      = request.args.get('source','all')
-    categories  = request.args.get('categories', 'all')
-    before      = request.args.get('before', '')
-    after       = request.args.get('after', '')
-    author      = request.args.get('author', 'all')
+    global categories, sourceList
+    if request.method=='GET':
+        source      = request.args.get('source','all')
+        cats= request.args.get('category', 'all')
+        author      = request.args.get('author', 'all')
+        latest      = request.args.get('latest', '1')
+    elif request.method=='POST':
+        source      = request.form.get('source','all')
+        cats  = request.form.get('category', 'all')
+        author      = request.form.get('author', 'all')
+        latest      = request.form.get('latest', '1')
 
     # fields here...
     nw=datetime.datetime.now()
     hrs=datetime.timedelta(hours=1)
     after=nw - hrs
     rv=['{}'.format(source)]
-    rows=db.find({'date':{'$gt':after}})
-#    rows=db.find()
+    #flt={'date':{'$gt':after}}
+    flt={}
+    if source != 'all' and source != '':
+        flt['src'] = source.replace(' ', '-')
+    if  cats != 'all' and cats != '':
+        flt['category'] = cats.lower()
+    if author  != 'all' and author != '':
+        flt['author'] = author
+    # latest overrides all the others
+    if  latest == 1:
+        flt={}
+
+
+    print('filter {}'.format(flt))
+    rows=db.find(flt).sort('date', DESCENDING).limit(50)
     if rows:
         for row in rows:
             k={}
@@ -111,10 +149,8 @@ def get_articles():
                 else:
                     k[r]=row[r].strftime('%Y-%m-%d %H:%M')
             rv.append(k)
-    if request.method=='GET':
-        return json.dumps(rv[1:])
-    else:
-        return render_template('index.html', rows=rv)
+    return render_template('index.html', rows=rv[1:],flt=flt, categories=categories, sources=sourceList, request=request)
+            #return json.dumps(rv[1:])
 
 
 

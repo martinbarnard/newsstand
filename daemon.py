@@ -4,24 +4,40 @@ import datetime
 from pymongo import MongoClient 
 import threading, time
 import urllib, os, json, yaml
+import logging, sys
+logging.basicConfig(strem=sys.stderr, level=logging.DEBUG)
+
 from config import *
 threads=[]
+DEBUG=True
 #
 # for generating unique ids
-from hashlib import sha256
-ids=lambda st : sha256(st.encode('utf-8'))
+from hashlib import sha1
+def ids(inst):
+    '''
+    Generate unique hash for url. Should be fairly fast and unique with sha1
+    '''
+    return sha1(inst.encode('utf-8')).hexdigest()
+
 sleepytime= lambda  mins:  mins * 60
 
 # init our db
 def init_db():
     client = MongoClient()
     cl = client.newsstand
-    print("daemon running. db init")
+    logging.info("daemon running. db init")
     return cl.articles
+def init_srcs():
+    client=MongoClient()
+    cl=client.newsstand
+    logging.info('pulling source list')
+    return cl.sources
+
 # Start our daemon
 db = init_db()
+srcs=init_srcs()
 
-def get_sources():
+def get_sources(srcs=srcs):
     '''
     Pull sources from our api
     '''
@@ -29,6 +45,16 @@ def get_sources():
     url=requests.get(newsapi + 'sources')
     p=json.loads(url.text)
     for s in p['sources']:
+        logging.debug("adding {} to sources".format(s['id']))
+        res=srcs.find({'_id':s['id']})
+        if res.count() <= 1:
+            try:
+                s['_id']=s['id']
+                srcs.insert_one(s)
+            except:
+                logging.debug('failed to insert duplicate key')
+                pass
+
         sl.append(s)
     return sl
 
@@ -40,7 +66,6 @@ def get_url(urlstring, ttls=None):
     url = requests.get(urlstring)
     titles=[]
     bl=json.loads(url.text)
-    #xx=add_records(db,bl)
     return bl['articles']
 
 
@@ -54,60 +79,60 @@ def articles(src, db=db):
     '''
     tts=sleepytime(sleep_minutes)
     while True:
-        print("awake & getting {}".format(src['id']))
+        logging.debug("awake & getting {}".format(src['id']))
         srcstring = 'source={}'.format(src['id'])
         for cat in categories:
             urlcat="&category={}".format(cat)
             urlstring=newsapi + 'articles?' + srcstring + urlcat + '&apiKey=' + key
             rvs=get_url(urlstring)
-            add_records(db, rvs, cat, src['id'])
+            add_records(db, rvs,  src)
         time.sleep(tts)
 
-
-def add_records(coll,recs, cat, src):
+def add_records(db,rvs, src):
     '''
-    add records to coll 
+    add records to db 
     '''
-    tora=datetime.datetime.now()
-    rvs=[]
-    # recs is a list
-    if  recs:
-        for r in recs:
+    currently=datetime.datetime.now()
+    src_id=src['id']
+    if  rvs:
+        for r in rvs:
             x=ids(r['url'])
-            xd =x.hexdigest()
-            r['_id']=xd
-            r['src']=src
-            r['category']=cat
+            r['_id']=x
+            r['src']=src_id
+            r['category']=src['category']
             datestring=r['publishedAt']
             if datestring:
                 try:
                     yourdate = dateutil.parser.parse(datestring)
                     r['date']=yourdate
                 except AttributeError:
-                    r['date']=tora
-                    print("can't format date {}".format(datestring))
+                    logging.debug("ATTRIBUTEERROR!!!")
+                    r['date']=currently
                 except OverflowError:
-                    print("fuck overflows")
+                    logging.debug("OVERFLOWEERROR!!!")
+                    pass
             else:
-                r['date']=tora
-            if not coll.find_one({'_id':xd}):
+                r['date']=currently
+
+            res = db.find({'_id':x}).limit(1)
+            if res.count() < 1:
                 try:
-                    coll.insert_one(r)
-                    print(">>> {} {}".format(src,r['title']))
-                except OverflowError:
-                    # we get here with the times of india having fucked up dates
-                    print("we're in overflowzzz {}".format(r))
-                    r['date']=datetime.datetime.now()
-                    try:
-                        coll.insert_one(r)
-                    except:
-                        print("Fuck it's all died")
+                    db.insert_one(r)
+                except Exception as e: 
+                    logging.debug("unable to insert record: {}".format(r['_id']))
+                    logging.debug("Error message:  {}".format(e))
+
+                    pass
+
+            else:
+                pass
     else:
-        print("No articles in {}".format(recs))
+        logging.info("No articles in {}".format(rvs))
     return 0
 
 
 sourceList=get_sources()
+
 for s in sourceList:
     t = threading.Thread(target=articles, args=(s, ))
     t.start()
