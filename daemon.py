@@ -11,12 +11,8 @@ from hashlib import sha1
 import nltk
 from nltk.corpus import stopwords
 stopset = set(stopwords.words('english'))
-
-
-logging.basicConfig(strem=sys.stderr, level=logging.DEBUG)
 threads=[]
 # TODO: loglevel, etc.
-DEBUG=True
 def ids(inst):
     '''
     Generate unique hash for url. Should be fairly fast and unique with sha1
@@ -35,7 +31,7 @@ def init_db():
 def init_srcs():
     client=MongoClient()
     cl=client.newsstand
-    logging.info('pulling source list')
+#    logging.debug('pulling source list')
     return cl.sources
 
 
@@ -66,14 +62,14 @@ def get_sources(srcs=srcs):
     url=requests.get(newsapi + 'sources')
     p=json.loads(url.text)
     for s in p['sources']:
-        logging.debug("adding {} to sources".format(s['id']))
         res=srcs.find({'_id':s['id']})
         if res.count() <= 1:
             try:
                 s['_id']=s['id']
                 srcs.insert_one(s)
             except:
-                logging.debug('failed to insert duplicate key')
+#                logging.debug('failed to insert duplicate key - updating {}'.format(s['id']))
+                srcs.save(s)
                 pass
 
         sl.append(s)
@@ -100,7 +96,7 @@ def articles(src, db=db):
     '''
     tts=sleepytime(sleep_minutes)
     while True:
-        logging.debug("awake & getting {}".format(src['id']))
+#        logging.debug("awake & getting {}".format(src['id']))
         srcstring = 'source={}'.format(src['id'])
         for cat in categories:
             urlcat="&category={}".format(cat)
@@ -121,10 +117,11 @@ def add_records(db,rvs, src):
             r['_id']=x
             r['src']=src_id
             r['category']=src['category']
-            if len(r['description']) > 20:
+            # TODO: Build a better stopwords list
+            # maybe greater than n-chars
+            if r['description'] != None and len(r['description']) > 20:
                 r['tokens']  = nltk.word_tokenize(r['description'])
-                r['tokens'] = [word for word in r['tokens'] if word not in stopset]
-                logging.debug("tokenized {}".format(r['tokens']))
+                r['tokens'] = [word.lower() for word in r['tokens'] if word not in stopset and len(word) > 4]
             else:
                 r['tokens'] = []
             datestring=r['publishedAt']
@@ -133,10 +130,8 @@ def add_records(db,rvs, src):
                     yourdate = dateutil.parser.parse(datestring)
                     r['date']=yourdate
                 except AttributeError:
-                    logging.debug("ATTRIBUTEERROR!!!")
                     r['date']=currently
                 except OverflowError:
-                    logging.debug("OVERFLOWEERROR!!!")
                     pass
             else:
                 r['date']=currently
@@ -146,15 +141,17 @@ def add_records(db,rvs, src):
                 try:
                     db.insert_one(r)
                 except Exception as e: 
-                    logging.debug("unable to insert record: {}".format(r['_id']))
-                    logging.debug("Error message:  {}".format(e))
+                    # Usually timestamp error
+                    r['date'] = currently
+                    db.insert_one(r)
 
                     pass
 
             else:
                 pass
     else:
-        logging.info("No articles in {}".format(rvs))
+#        logging.info("No articles in {}".format(rvs))
+        pass
     return 0
 
 sourceList=get_sources()

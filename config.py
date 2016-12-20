@@ -5,6 +5,7 @@ port= 20055
 # [misc]
 sleep_minutes= 20
 newsapi= 'https://newsapi.org/v1/'
+DEBUG=False
 categories = [ 
     'business', 'entertainment', 
     'gaming', 'general', 'music', 

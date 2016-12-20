@@ -102,6 +102,7 @@ def get_articles():
     categories 
     before - time: %Y-%m-%d %H:%M:%S
     after - time: %Y-%m-%d %H:%M:%S
+    keyword -  
     '''
     global categories, sourceList
     limits = 50
@@ -110,11 +111,13 @@ def get_articles():
         cats= request.args.get('category', 'all')
         author      = request.args.get('author', 'all')
         latest      = request.args.get('latest', '1')
+        keyword      = request.args.get('keyword', '')
     elif request.method=='POST':
         source      = request.form.get('source','all')
         cats  = request.form.get('category', 'all')
         author      = request.form.get('author', 'all')
         latest      = request.form.get('latest', '1')
+        keyword      = request.form.get('keyword', '')
 
     # fields here...
     nw=datetime.datetime.now()
@@ -132,7 +135,10 @@ def get_articles():
     # latest overrides all the others
     if  latest == 1:
         flt={}
+    if keyword  != '':
+        flt['tokens'] = {"$in":[keyword.lower()]}
 
+    print('filter is {}'.format(flt))
     rows=db.find(flt).sort('date', DESCENDING).limit(limits)
     tokens = {}
     if rows:
