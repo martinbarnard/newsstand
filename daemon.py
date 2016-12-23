@@ -54,7 +54,7 @@ def load_sentiment(sentimentData = 'AF.txt'):
         scores[term] = float(score)  # Convert the score to an integer.
     return scores # Print every (term, score) pair in the dictionary
 
-def get_sources(srcs=srcs):
+def get_sources(srcs=srcs, lang='en'):
     '''
     Pull sources from our api
     '''
@@ -72,7 +72,8 @@ def get_sources(srcs=srcs):
                 srcs.save(s)
                 pass
 
-        sl.append(s)
+        if s['language']==lang:
+            sl.append(s)
     return sl
 
 def get_url(urlstring, ttls=None):
